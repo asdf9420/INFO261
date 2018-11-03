@@ -1,2 +1,2 @@
 # INFO261
-Repositorio ramo Base de Datos - Pricila Badilla
+Pricila Badilla - Base de Datos
