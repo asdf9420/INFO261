@@ -1,0 +1,446 @@
+
+Notebook 7 - Crear y consultar una Base de Datos no relacional orientada a Documentos (Mongo)
+
+Ejercicio 1: Primeros pasos desde Mongo CLI
+
+En un terminal, verificar si el SGBD Mongo ya está iniciado: ps -aux | grep mongod
+
+Si no está iniciado, iniciarlo con el comando: mongod
+
+--------------------------------------------------------------------------------------------------------------------
+mongodb   8281  1.5  1.0 1052208 80232 ?       Ssl  19:24   0:03 /usr/bin/mongod --config /etc/mongod.conf
+andres    8356  0.0  0.0  11472   896 pts/2    S+   19:27   0:00 grep --color=auto mongod
+--------------------------------------------------------------------------------------------------------------------
+
+Luego, abrir otra pestaña de terminal (CTRL + Shift + T) e iniciar el cliente CLI de mongo: mongo.
+
+1) Creamos una nueva base de datos llamado nb7-peliculas
+
+use nb7-peliculas
+
+Deberian ver como respuesta del sistema la respuesta: "switched to db nb7-peliculas":
+
+---------------------------------------------------------------------------------------
+> use nb7-pelic
+switched to db nb7-pelic
+-----------------------------------------------------------------------------------------
+
+Mongo CLI no utiliza SQL para realizar operaciones CRUD (Create/Read/Update/Delete), utiliza su propia API parecida al lenguaje Javascript.
+
+La variable db representa siempre la base de datos que estamos utilizando (en este caso "nb7-peliculas").
+
+########################################################################################
+
+2) Creamos una colección actors
+
+db.actors.insert({firstname:"Will", lastname:"Smith"})
+
+Como pueden verlo, para crear la colección no tuvimos que definir la estructura de la colección, simplemente hemos insertado un documento.
+
+------------------------------------------------------------------------------------------
+> db.actors.find()
+> db.actors.insert({firstname:"Will", lastname:"Smith"})
+WriteResult({ "nInserted" : 1 })
+------------------------------------------------------------------------------------------
+
+Verificamos que hemos realmente creado la coleccion con:
+
+db.actors.find()
+
+------------------------------------------------------------------------------------------
+> db.actors.find()
+{ "_id" : ObjectId("5c336c266acb5d5f7c27d4b4"), "firstname" : "Will", "lastname" : "Smith" }
+------------------------------------------------------------------------------------------
+
+##########################################################################################
+
+3) Insertamos varios documentos en la colección en un solo comando:
+
+db.actors.insertMany([{firstname:"Scarlett", lastname:"Johanson"},{firstname:"Matt", lastname:"Damon"},{firstname:"Nathan", lastname:"Smith"}])
+
+
+---------------------------------------------------------------------------------------------
+> db.actors.insertMany([{firstname:"Scarlett", lastname:"Johanson"},{firstname:"Matt", lastname:"Damon"},{firstname:"Nathan", lastname:"Smith"}])
+{
+        "acknowledged" : true,
+        "insertedIds" : [
+                ObjectId("5c336d975afc861e758f5901"),
+                ObjectId("5c336d975afc861e758f5902"),
+                ObjectId("5c336d975afc861e758f5903")
+        ]
+}
+-------------------------------------------------------------------
+
+###########################################################################################
+
+4) Contamos cuántos documentos tenemos en la colección:
+
+db.actors.count()
+
+---------------------------------------------------------------------
+> db.actors.count()
+3
+---------------------------------------------------------------------
+
+Como en SQL, la API de Mongo permite construir consultas para filtrar, ordenar o agrupar datos. Sin embargo, la síntaxis es distinta (y amenudo menos simple e intuitiva que SQL).
+
+############################################################################################
+
+5) Filtramos los actores que se llaman 'Smith'
+
+db.actors.find({lastname:"Smith"})
+
+----------------------------------------------------------------------------------------------------
+> db.actors.find({lastname:"Smith"})
+{ "_id" : ObjectId("5c336d975afc861e758f5903"), "firstname" : "Nathan", "lastname" : "Smith" }
+----------------------------------------------------------------------------------------------------
+
+Mongo tambien permite modificar los datos (ojo: Mongo no tiene mecanismo interno para asegurar la coherencia de los datos, es la responsabilidad del programador de la aplicación).
+
+#############################################################################################
+
+6) Actualizamos un documento. Por ejemplo, "Nathan Smith" se llama ahora "Nathan Lane"
+
+db.actors.update({firstname:"Nathan", lastname:"Smith"},{$set : {lastname:"Lane"}})
+
+-----------------------------------------------------------------------------------------------------
+> db.actors.update({firstname:"Nathan", lastname:"Smith"},{$set : {lastname:"Lane"}})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+-----------------------------------------------------------------------------------------------------
+
+Este último comando va a actualizar el primer documento encontrado que corresponde al filtro definido.
+
+##############################################################################################
+
+7) Supongamos ahora que queremos agregar un campo "gender" en todos los documentos:
+
+¿Qué hace el comando siguiente? ¿Cuál es el limite?
+
+db.actors.update({},{$set : {gender:"M"}})
+
+--------------------------------------------------------------------------------------------------------------------
+> db.actors.update({},{$set : {gender:"M"}})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+--------------------------------------------------------------------------------------------------------------------
+> db.actors.find()
+{ "_id" : ObjectId("5c336d975afc861e758f5901"), "firstname" : "Scarlett", "lastname" : "Johanson", "gender" : "M" }
+{ "_id" : ObjectId("5c336d975afc861e758f5902"), "firstname" : "Matt", "lastname" : "Damon" }
+{ "_id" : ObjectId("5c336d975afc861e758f5903"), "firstname" : "Nathan", "lastname" : "Lane" }
+--------------------------------------------------------------------------------------------------------------------
+Anade el campo "gender" cuyo valor es "M" al "actor" "Scarlett".
+--------------------------------------------------------------------------------------------------------------------
+
+Para actualizar todos los documentos, y no simplemente el primero, podemos utilizar el comando:
+
+db.actors.update({},{$set : {gender:"M"}},{multi:true})
+
+--------------------------------------------------------------------------------------------------------------------
+> db.actors.update({},{$set : {gender:"M"}},{multi:true})
+WriteResult({ "nMatched" : 3, "nUpserted" : 0, "nModified" : 2 })
+--------------------------------------------------------------------------------------------------------------------
+> db.actors.find()
+{ "_id" : ObjectId("5c336d975afc861e758f5901"), "firstname" : "Scarlett", "lastname" : "Johanson", "gender" : "M" }
+{ "_id" : ObjectId("5c336d975afc861e758f5902"), "firstname" : "Matt", "lastname" : "Damon", "gender" : "M" }
+{ "_id" : ObjectId("5c336d975afc861e758f5903"), "firstname" : "Nathan", "lastname" : "Lane", "gender" : "M" }
+--------------------------------------------------------------------------------------------------------------------
+
+####################################################################################################################
+
+8) Actualizar el documento "Scarlett Johanson", para indicar que es una mujer (gender:"F").
+
+--------------------------------------------------------------------------------------------------------------------
+> db.actors.update({},{$set : {gender:"F"}})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+--------------------------------------------------------------------------------------------------------------------
+> db.actors.find()
+{ "_id" : ObjectId("5c336d975afc861e758f5901"), "firstname" : "Scarlett", "lastname" : "Johanson", "gender" : "F" }
+{ "_id" : ObjectId("5c336d975afc861e758f5902"), "firstname" : "Matt", "lastname" : "Damon", "gender" : "M" }
+{ "_id" : ObjectId("5c336d975afc861e758f5903"), "firstname" : "Nathan", "lastname" : "Lane", "gender" : "M" }
+--------------------------------------------------------------------------------------------------------------------
+
+####################################################################################################################
+
+9) Para suprimir un atributo, podemos utilizar el operador $unset. Por ejemplo:
+
+db.actors.update({},{$unset : {gender:1}},{multi:true})
+
+--------------------------------------------------------------------------------------------------------------------
+> db.actors.update({},{$unset : {gender:1}},{multi:true})
+WriteResult({ "nMatched" : 3, "nUpserted" : 0, "nModified" : 3 })
+--------------------------------------------------------------------------------------------------------------------
+> db.actors.find()
+{ "_id" : ObjectId("5c336d975afc861e758f5901"), "firstname" : "Scarlett", "lastname" : "Johanson" }
+{ "_id" : ObjectId("5c336d975afc861e758f5902"), "firstname" : "Matt", "lastname" : "Damon" }
+{ "_id" : ObjectId("5c336d975afc861e758f5903"), "firstname" : "Nathan", "lastname" : "Lane" }
+--------------------------------------------------------------------------------------------------------------------
+
+####################################################################################################################
+
+10) Para suprimir un documento completo, podemos utilizar el comando:
+
+db.actors.remove({lastname:"Smith"})
+
+--------------------------------------------------------------------------------------------------------------------
+> db.actors.remove({lastname:"Smith"})
+WriteResult({ "nRemoved" : 0 })
+--------------------------------------------------------------------------------------------------------------------
+> db.actors.find()
+{ "_id" : ObjectId("5c336d975afc861e758f5901"), "firstname" : "Scarlett", "lastname" : "Johanson" }
+{ "_id" : ObjectId("5c336d975afc861e758f5902"), "firstname" : "Matt", "lastname" : "Damon" }
+{ "_id" : ObjectId("5c336d975afc861e758f5903"), "firstname" : "Nathan", "lastname" : "Lane" }
+----------------------------------------------------------------------------------------------------------------
+
+####################################################################################################################
+
+11) Agregamos un atributo de tipo arreglo en un documento
+
+db.actors.update({firstname:"Matt"},{$set : {tab:[1,"a"]}})
+
+----------------------------------------------------------------------------------------------------------------
+> db.actors.update({firstname:"Matt"},{$set : {tab:[1,"a"]}})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+-------------------------------------------------------------------------------------------------------------------
+> db.actors.find()
+{ "_id" : ObjectId("5c336d975afc861e758f5901"), "firstname" : "Scarlett", "lastname" : "Johanson" }
+{ "_id" : ObjectId("5c336d975afc861e758f5902"), "firstname" : "Matt", "lastname" : "Damon", "tab" : [ 1, "a" ] }
+{ "_id" : ObjectId("5c336d975afc861e758f5903"), "firstname" : "Nathan", "lastname" : "Lane" }
+-------------------------------------------------------------------------------------------------------------------
+
+####################################################################################################################
+
+12) Añadimos un valor en el arreglo con el operator $push
+
+db.actors.update({firstname:"Matt"},{$push : {tab:["new_value"]}})
+
+------------------------------------------------------------------------------------------------
+> db.actors.update({firstname:"Matt"},{$push : {tab:["new_value"]}})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+------------------------------------------------------------------------------------------------
+> db.actors.find()
+{ "_id" : ObjectId("5c336d975afc861e758f5901"), "firstname" : "Scarlett", "lastname" : "Johanson" }
+{ "_id" : ObjectId("5c336d975afc861e758f5902"), "firstname" : "Matt", "lastname" : "Damon", "tab" : [ 1, "a", [ "new_value" ] ] }
+{ "_id" : ObjectId("5c336d975afc861e758f5903"), "firstname" : "Nathan", "lastname" : "Lane" }
+------------------------------------------------------------------------------------------------
+
+¿Cuál es el problema con el último comando? ¿Cuál es la diferencia con el comando siguiente?
+
+db.actors.update({firstname:"Matt"},{$push : {tab:"new_value"}})
+------------------------------------------------------------------------------------------------
+> db.actors.update({firstname:"Matt"},{$push : {tab:"new_value"}})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+------------------------------------------------------------------------------------------------
+> db.actors.find()
+{ "_id" : ObjectId("5c336d975afc861e758f5901"), "firstname" : "Scarlett", "lastname" : "Johanson" }
+{ "_id" : ObjectId("5c336d975afc861e758f5902"), "firstname" : "Matt", "lastname" : "Damon", "tab" : [ 1, "a", [ "new_value" ], "new_value" ] }
+{ "_id" : ObjectId("5c336d975afc861e758f5903"), "firstname" : "Nathan", "lastname" : "Lane" }
+-------------------------------------------------------------------------------------------------
+El problema es que si bien añade un elemento al arreglo "tab", este incluye los parentesis por fuera del atributo que se desea agregar.
+La diferencia es que con el último, simplemente se añade como se espera un nuevo atributo dentro del arreglo, siguiendo la forma que
+este poseeia previamente.
+-------------------------------------------------------------------------------------------------
+
+Cómo pueden verlo el SGBD no relacional Mongo es mucho más flexible que MySQL, pero deja mucho más posibilidad de equivocarse.
+
+No duden en consultar la documentación de Mongo para probar otros comandos CRUD: https://docs.mongodb.com/manual/crud/
+
+###################################################################################################################
+-------------------------------------------------------------------------------------------------------------------
+###################################################################################################################
+
+Ejercicio 2: Primeras consultas avanzadas con una colección de peliculas
+
+En este segundo ejercicio, trabajaremos con una base de datos existente llamada "movie details", la cual tiene 2295 documentos JSON resumiendo información sobre peliculas.
+
+    Descargar el dataset https://raw.githubusercontent.com/steveren/docs-assets/charts-tutorial/movieDetails.json. ¿Qué contiene este archivo? Un documento JSON? Un arreglo de documentos JSON? Una lista de documentos JSON?
+
+    Importamos los datos en Mongo con el comando siguiente:
+
+mongoimport --db nb7-peliculas --collection movieDetails --drop --file 
+
+---------------------------------------------------------------------------------------------------
+2019-01-07T16:31:37.775-0300    connected to: localhost
+2019-01-07T16:31:37.775-0300    dropping: nb7-pelic.movieDetails
+2019-01-07T16:31:38.244-0300    imported 2295 documents
+---------------------------------------------------------------------------------------------------
+
+A continuación, queremos realizar algunas consultas típicas para observar la diferencia entre el lenguaje de consulta SQL y el lenguaje de Mongo.
+
+Nota bena: ¿Qué pasa si agregan la función .pretty() al final de un comando? Por ejemplo: db.actors.find().pretty()
+----------------------------------------------------------------------------------------------------
+> db.actors.find().pretty()
+{
+        "_id" : ObjectId("5c336c266acb5d5f7c27d4b4"),
+        "firstname" : "Will",
+        "lastname" : "Smith"
+}
+-----------------------------------------------------------------------------------------------------------------
+Se imprime la información con un mejor orden, separando cada campo de información en una linea diferente.
+-----------------------------------------------------------------------------------------------------------------
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+1) Utilizar un comando Mongo para contar cuántos documentos hay en la colección 'movieDetails'. ¿Cuál sería el equivalente en SQL?
+
+-----------------------------------------------------
+> db.movieDetails.count()
+2295
+-----------------------------------------------------
+ select count(*)
+  from movieDetails;
+-----------------------------------------------------
+
+#####################################################
+
+2) Mostrar los títulos (title) y años de producción (year) de todas las peliculas de la colección. ¿A qué clausula SQL correspondría?
+
+------------------------------------------------------
+> db.movieDetails.find({},{title:1, year:1}).pretty()
+{
+        "_id" : ObjectId("5b107bec1d2952d0da9046e1"),
+        "title" : "A Million Ways to Die in the West",
+        "year" : 2014
+}
+...
+{
+        "_id" : ObjectId("5b107bec1d2952d0da9046f3"),
+        "title" : "Star Trek II: The Wrath of Khan",
+        "year" : 1982
+}
+------------------------------------------------------
+
+###################################################################################
+
+3) Contar las peliculas realizadas entre 1990 y 2000
+
+--------------------------------------------------------------
+> db.movieDetails.find({year: {"$lt": 2000 , "$gt": 1990}},{title:1, year:1}).pretty()
+{
+        "_id" : ObjectId("5b107bec1d2952d0da9046e2"),
+        "title" : "Wild Wild West",
+        "year" : 1999
+}
+...
+{
+        "_id" : ObjectId("5b107bec1d2952d0da904764"),
+        "title" : "The Naked Gun 2½: The Smell of Fear",
+        "year" : 1991
+}
+------------------------------------------------------------------
+
+######################################################################################
+
+4) ¿Cuáles son los titulos de peliculas que ganaron más de 5 awards?
+
+-----------------------------------------------------------------------
+> db.movieDetails.find({'awards.wins': {$gt: 5}} , {title:1}).pretty()
+{ "_id" : ObjectId("5b107bec1d2952d0da9046e2"), "title" : "Wild Wild West" }
+...
+{
+        "_id" : ObjectId("5b107bec1d2952d0da90470b"),
+        "title" : "The Adventures of Priscilla, Queen of the Desert"
+}
+---------------------------------------------------------------------------
+
+######################################################################################
+
+5) ¿Cuál es el rating promedio en el sitio imdb para todas las peliculas?
+
+-----------------------------------------------------------------------------
+> db.movieDetails.aggregate({$group:{_id : "$type", prom:{$avg: "$imdb.rating"}}}).pretty();
+{ "_id" : "movie", "prom" : 6.5031560490940965 }
+-----------------------------------------------------------------------------
+
+########################################################################################
+
+6) ¿Cuáles son las peliculas en las cuales participó el actor Nicolas Cage?
+
+########################################################################################
+
+7) ¿Cuál es el número de pelicula por año?
+
+########################################################################################
+
+8) ¿Cuál es la pelicula con el mejor rating?
+
+########################################################################################
+
+9) ¿Cuáles son los thrillers con un rating de al meno 6?
+
+########################################################################################
+
+10) ¿Cuáles son todos los valores de generos posibles?
+
+########################################################################################
+
+11) ¿Cuáles son las peliculas que contienen la palabra 'Star'?
+
+########################################################################################
+
+12) ¿Cuáles son los títulos que empiezan con la letra 'T'?
+
+########################################################################################
+
+13) ¿Cuáles son las peliculas que no son de tipo Drama o Thriller?
+
+########################################################################################
+
+Ejercicio 3: Integrar Mongo con Python
+
+Desde un entorno Python, conectarse a su base de datos movieDetails y realizar consultas similares al ejercicio 2.
+Ejercicio 4: Conceptos avanzados de Base de Datos: MySQL y Mongo
+
+    Indíce: optimización de consultas
+
+Referencias:
+
+    Indíces en Mongo: https://docs.mongodb.com/manual/indexes/
+    Indíces en MySQL: https://dev.mysql.com/doc/refman/8.0/en/optimization-indexes.html
+    Introducción a indíces en MySQL: https://www.adictosaltrabajo.com/2015/09/11/introduccion-a-indices-en-mysql/
+
+1) ¿Qué es un Indíce y de qué sirve?
+
+2) ¿Cuándo los SGBDs utilizan los Indíces?
+
+3) ¿Cuáles son los tipos de Indíces en MySQL y Mongo?
+
+4) Si los indíces son utiles, ¿por qué no crear indíces por cada columna/atributo? ¿Cuáles son los límimtes?
+
+5) Conectarse a la base de datos 'sakila' de MySQL y ejecutar la consulta siguiente para poder conservar información sobre el rendimiento de consultas:
+
+set profiling=1;
+
+Ejecutar 10 veces la consulta siguiente: select * from rental where return_date>="2005-08-25 17:48:44";
+
+Luego, ejecutar el comando: show profiles;
+
+¿Cuál es la duración promedia del SGBD para responder a esta consulta?
+
+6) Crear un index sobre la columna 'return_date', y medir nuevamente 10 veces el rendimiento de la misma consulta. ¿Cuál es el nuevo valor promedio?
+
+7) ¿Cómo crear índices en Mongo?
+
+    Transacciones
+
+Referencias:
+
+    Introducción a Transacciones en MySQL: http://raknarrok.blogspot.com/2011/03/introduccion-transacciones.html
+    Transacción en MySQL: https://dev.mysql.com/doc/refman/8.0/en/commit.html
+    Transacción en Mongo: https://docs.mongodb.com/manual/core/transactions/
+
+1) ¿Qué es una transacción?
+
+2) ¿En términos de transacción, cuáles son las características que deberian garantizar un buen SGBD?
+
+3) En MySQL, crear una tabla bank_user(name VARCHAR(10), account INT) que permite conocer el monto disponible en la cuenta bancaria de algunos usuarios.
+
+4) Realizar una operación que permita transferir 100.000 pesos del usuario A al usuario B. ¿Cómo garantizar que la operación no va a generar algún incoherencia en los datos? Escribir el código SQL correspondiente.
+
+5) Supongamos que queremos hacerlo mismo en Mongo. ¿Mongo soporta transacciones ACID? ¿Desde cuándo? ¿Cómo se puede hacer transacciones? ¿Con qué limitaciones?
+
+    Sharding y Replicación
+
+1) ¿Cuál es el principio del Sharding?
+
+2) ¿Cuál es el principio de la Replicación?
+
+3) ¿MySQL implementa mecanismos de Sharding/Replicación? y Mongo?
